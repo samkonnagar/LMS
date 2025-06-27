@@ -37,6 +37,18 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/notifications", notificationsRoutes);
 app.use("/api/file", fileRoutes);
 
+// 404 Handler for undefined routes
+import { ApiResponse } from "./utils/ApiResponse.js";
+
+app.use((req, res, next) => {
+  res.status(404).json(new ApiResponse(404, null, "Invalid Request"));
+});
+
+// Error handling
+import handleError from "./middleware/errorHandler.middleware.js";
+
+app.use(handleError)
+
 connectDB()
   .then(() => {
     app.listen(process.env.PORT || 8000, () => {

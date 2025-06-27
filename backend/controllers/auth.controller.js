@@ -1,5 +1,7 @@
+import { ApiResponse } from "../utils/ApiResponse.js";
+
 const registerNewUser = async (req, res) => {
-  res.json({ message: "Feature not added Yet!" });
+  res.json(new ApiResponse(201, {}, "User Created Successfully"));
 };
 
 const handleLoginUser = async (req, res) => {
