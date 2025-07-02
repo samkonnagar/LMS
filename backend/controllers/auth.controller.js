@@ -34,24 +34,104 @@ const registerNewUser = async (req, res) => {
   });
 
   // remove password from response
-  const createdUser = await UserModel.findById(user._id).select("-password -__v");
+  const createdUser = await UserModel.findById(user._id).select(
+    "-password -__v"
+  );
 
   // check for user creation
   if (!createdUser) {
     throw new ApiError(500, "Something went wrong while registerimg the user");
   }
 
+  // send cookie
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  // generateToken
+  const token = await createdUser.generateToken();
+
   return res
     .status(201)
-    .json(new ApiResponse(201, { createdUser }, "User Created Successfully"));
+    .cookie("accessToken", token, options)
+    .json(
+      new ApiResponse(
+        201,
+        { user: createdUser, accessToken: token },
+        "User Created Successfully"
+      )
+    );
 };
 
 const handleLoginUser = async (req, res) => {
-  res.json({ message: "Feature not added Yet!" });
+  // get user details from frontend
+  const { email, password } = req.body;
+  if (!email) {
+    throw new ApiError(400, "Email is required");
+  }
+
+  // find the user
+  const user = await UserModel.findOne({
+    email,
+  });
+
+  if (!user) {
+    throw new ApiError(
+      404,
+      "user does not exist, please create an account first"
+    );
+  }
+
+  // check the password
+  if (!password) {
+    throw new ApiError(404, "please enter the password");
+  }
+  const isPasswordValid = await user.isPasswordCorrect(password);
+
+  if (!isPasswordValid) {
+    throw new ApiError(401, "password not correct");
+  }
+
+  const loggedInUser = await UserModel.findById(user._id).select(
+    "-password -__v"
+  );
+
+  // send cookie
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  // generateToken
+  const token = await user.generateToken();
+
+  return res
+    .status(200)
+    .cookie("accessToken", token, options)
+    .json(
+      new ApiResponse(
+        200,
+        {
+          user: loggedInUser,
+          accessToken: token,
+        },
+        "user logged In Successfully"
+      )
+    );
 };
 
 const handleGetUserData = async (req, res) => {
-  res.json({ message: "Feature not added Yet!" });
+  // this controller not complted yet!
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        user: req?.user,
+      },
+      "Success"
+    )
+  );
 };
 
 const handleUpdateUserData = async (req, res) => {
