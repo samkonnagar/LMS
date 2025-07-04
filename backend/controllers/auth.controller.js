@@ -135,20 +135,97 @@ const handleGetUserData = async (req, res) => {
 };
 
 const handleUpdateUserData = async (req, res) => {
-  res.json({ message: "Feature not added Yet!" });
+  const { fullName, email } = req.body;
+
+  if (!fullName || !email) {
+    throw new ApiError(400, "all fields are required");
+  }
+
+  const user = await UserModel.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        name: fullName,
+        email,
+      },
+    },
+    { new: true }
+  ).select("-password -__v");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Account updated successfully"));
 };
 
 const handleGetAllUserData = async (req, res) => {
-  res.json({ message: "Feature not added Yet!" });
+  let skip = 0;
+  let limit = 20;
+  if (req.query?.page) {
+    const getNum = Number(req.query.page);
+    if (isNaN(getNum) || getNum < 1) {
+      throw new ApiError(400, "Invalid Datatype");
+    }
+    skip = (getNum - 1) * limit;
+  }
+  const students = await UserModel.find({
+    role: "student",
+  })
+    .skip(skip)
+    .limit(limit)
+    .select("-password -__v");
+  if (!students) {
+    throw new ApiError(500, "Something Wrong");
+  }
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        students,
+      },
+      "Successfull"
+    )
+  );
 };
 
 const handleBlockSelectedUser = async (req, res) => {
-  res.json({ message: "Feature not added Yet!" });
+  const _id = req.params?.id;
+  const user = await UserModel.findByIdAndUpdate(
+    _id,
+    {
+      $set: {
+        isBlocked: true,
+      },
+    },
+    { new: true }
+  ).select("-password -__v");
+  if (!user) {
+    throw new ApiError(400, "Invalid Id");
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "User Blocked Successfully"));
 };
 
 const handleUnblockSelectedUser = async (req, res) => {
-  res.json({ message: "Feature not added Yet!" });
+  const _id = req.params?.id;
+  const user = await UserModel.findByIdAndUpdate(
+    _id,
+    {
+      $set: {
+        isBlocked: false,
+      },
+    },
+    { new: true }
+  ).select("-password -__v");
+  if (!user) {
+    throw new ApiError(400, "Invalid Id");
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "User Unblocked Successfully"));
 };
+
+// add two more controller and routes: changePassword and logoutUser
 
 export {
   registerNewUser,
