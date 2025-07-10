@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import CategoryModal from "../models/Category.model.js";
 import CourseModal from "../models/Course.model.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -76,7 +77,91 @@ const handleGetAllCourses = async (req, res) => {
 };
 
 const handleGetFilterCourses = async (req, res) => {
-  res.json({ message: "Feature not added Yet!" });
+  let skip = 0;
+  let limit = 20;
+  const category = req.query?.category;
+  const tag = req.query?.tag;
+  const q = req.query?.q;
+  if (req.query?.page) {
+    const getNum = Number(req.query.page);
+    if (isNaN(getNum) || getNum < 1) {
+      throw new ApiError(400, "Invalid Datatype");
+    }
+    skip = (getNum - 1) * limit;
+  }
+
+  const matchStage = {};
+
+  if (tag) {
+    matchStage.tags = tag;
+  }
+
+  if (q) {
+    matchStage.$or = [
+      { title: { $regex: q, $options: "i" } },
+      { description: { $regex: q, $options: "i" } },
+    ];
+  }
+
+  const results = await CourseModal.aggregate([
+    {
+      $lookup: {
+        from: "categories",
+        localField: "category",
+        foreignField: "_id",
+        as: "category",
+      },
+    },
+    { $unwind: "$category" },
+    {
+      $match: {
+        ...matchStage,
+        ...(category ? { "category.name": category } : {}),
+      },
+    },
+    { $sort: { createdAt: -1 } },
+    {
+      $lookup: {
+        from: "users",
+        localField: "instructor",
+        foreignField: "_id",
+        as: "instructor",
+      },
+    },
+    { $unwind: "$instructor" },
+    {
+      $match: {
+        "instructor.isBlocked": false,
+      },
+    },
+    {
+      $project: {
+        __v: 0,
+        "instructor.__v": 0,
+        "instructor.password": 0,
+        "instructor.email": 0,
+        "instructor.role": 0,
+        "instructor.isBlocked": 0,
+        "category.__v": 0,
+      },
+    },
+    {
+      $skip: skip,
+    },
+    {
+      $limit: limit,
+    },
+  ]);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        results,
+      },
+      "Successfull"
+    )
+  );
 };
 
 const handleCreateNewCourse = async (req, res) => {
@@ -134,7 +219,67 @@ const handleCreateNewCourse = async (req, res) => {
 };
 
 const handleGetCourseDetails = async (req, res) => {
-  res.json({ message: "Feature not added Yet!" });
+  const id = req.params?.id;
+
+  const course = await CourseModal.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(id),
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "instructor",
+        foreignField: "_id",
+        as: "instructor",
+      },
+    },
+    {
+      $unwind: "$instructor",
+    },
+    {
+      $match: {
+        "instructor.isBlocked": false,
+      },
+    },
+    {
+      $lookup: {
+        from: "categories",
+        localField: "category",
+        foreignField: "_id",
+        as: "category",
+      },
+    },
+    {
+      $unwind: "$category",
+    },
+    {
+      $project: {
+        __v: 0,
+        "instructor.__v": 0,
+        "instructor.password": 0,
+        "instructor.email": 0,
+        "instructor.role": 0,
+        "instructor.isBlocked": 0,
+        "category.__v": 0,
+      },
+    },
+  ]);
+
+  if (!course) {
+    throw new ApiError(409, "Invalid Course Id");
+  }
+  // this controller not complted yet!
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        course,
+      },
+      "Success"
+    )
+  );
 };
 
 const handleUpdateCourseDetails = async (req, res) => {
@@ -142,7 +287,15 @@ const handleUpdateCourseDetails = async (req, res) => {
 };
 
 const handleDeleteCourseDetails = async (req, res) => {
-  res.json({ message: "Feature not added Yet!" });
+  const _id = req.params?.id;
+  // not done yet
+  const course = await CourseModal.findByIdAndDelete(_id);
+  if (!course) {
+    throw new ApiError(400, "Invalid Id");
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Course Deleted Successfully"));
 };
 
 export {
