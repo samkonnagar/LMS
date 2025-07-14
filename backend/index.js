@@ -2,6 +2,12 @@ import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import express from "express";
 import connectDB from "./config/db.config.js";
+import path from "path";
+import { fileURLToPath } from "url";
+
+// Create __dirname equivalent in ES6 modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
@@ -9,6 +15,12 @@ const app = express();
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 app.use(cookieParser());
+
+// Serve static files from the "uploads/thumbnails" directory
+app.use(
+  "/thumbnail",
+  express.static(path.join(__dirname, "uploads", "thumbnails"))
+);
 
 // Setup dotenv
 dotenv.config({
@@ -47,7 +59,7 @@ app.use((req, res, next) => {
 // Error handling
 import handleError from "./middleware/errorHandler.middleware.js";
 
-app.use(handleError)
+app.use(handleError);
 
 connectDB()
   .then(() => {

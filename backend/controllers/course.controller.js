@@ -65,11 +65,15 @@ const handleGetAllCourses = async (req, res) => {
   if (!courses) {
     throw new ApiError(500, "Something Wrong");
   }
+  const u_courses = courses.map((course) => ({
+    ...course,
+    thumbnail: `${process.env.BASE_URL}/thumbnail/${course.thumbnail}`,
+  }));
   return res.status(200).json(
     new ApiResponse(
       200,
       {
-        courses,
+        u_courses,
       },
       "Successfull"
     )
@@ -153,11 +157,19 @@ const handleGetFilterCourses = async (req, res) => {
     },
   ]);
 
+  if (!results) {
+    throw new ApiError(500, "Something Wrong");
+  }
+  const u_results = results.map((course) => ({
+    ...course,
+    thumbnail: `${process.env.BASE_URL}/thumbnail/${course.thumbnail}`,
+  }));
+
   return res.status(200).json(
     new ApiResponse(
       200,
       {
-        results,
+        u_results,
       },
       "Successfull"
     )
@@ -283,7 +295,50 @@ const handleGetCourseDetails = async (req, res) => {
 };
 
 const handleUpdateCourseDetails = async (req, res) => {
-  res.json({ message: "Feature not added Yet!" });
+  const { title, description, category } = req.body;
+
+  const user_id = req.user?._id;
+  const course_id = req.params?.id;
+  if (!title || !description || !category) {
+    throw new ApiError(400, "all fields are required");
+  }
+
+  const f_category = await CategoryModal.findOne({
+    name: category,
+  });
+
+  if (!f_category) {
+    throw new ApiError(400, "Invalid Category");
+  }
+
+  const course = await CourseModal.findOne({
+    _id: new mongoose.Types.ObjectId(course_id),
+    instructor: new mongoose.Types.ObjectId(user_id),
+  });
+
+  if (!course) {
+    throw new ApiError(400, "Invalid Request");
+  }
+
+  const u_course = await CourseModal.findByIdAndUpdate(
+    course._id,
+    {
+      $set: {
+        title,
+        description,
+        category: new mongoose.Types.ObjectId(f_category._id),
+      },
+    },
+    { new: true }
+  )
+    .select("-__v")
+    .populate("category");
+
+  u_course.thumbnail = `${process.env.BASE_URL}/thumbnail/${u_course.thumbnail}`;
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, u_course, "Account updated successfully"));
 };
 
 const handleDeleteCourseDetails = async (req, res) => {

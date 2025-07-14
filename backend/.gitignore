@@ -120,4 +120,4 @@ dist
 # custome
 notes.txt
 test.js
-uploads/thumbnails
+uploads/*
