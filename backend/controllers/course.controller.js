@@ -191,7 +191,7 @@ const handleCreateNewCourse = async (req, res) => {
     !category
   ) {
     deleteFile(thumbnailPath);
-    throw new ApiError(400, "All filds are required");
+    throw new ApiError(400, "All fields are required");
   }
 
   // check if user category name exist

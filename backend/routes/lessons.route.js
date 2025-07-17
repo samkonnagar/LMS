@@ -6,12 +6,16 @@ import {
   handleGetAllLessons,
 } from "../controllers/lesson.controller.js";
 import { fileUpload } from "../middleware/multer.middleware.js";
+import authorizeRole from "../middleware/role.middleware.js";
+import { verifyJWT } from "../middleware/auth.middleware.js";
 
 const router = Router();
+router.use(verifyJWT);
 
 router
   .route("/:courseId")
   .post(
+    authorizeRole("instructor"),
     fileUpload("./").fields([
       { name: "video", maxCount: 1 },
       { name: "pdf", maxCount: 1 },
