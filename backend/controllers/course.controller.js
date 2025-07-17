@@ -4,6 +4,7 @@ import CourseModal from "../models/Course.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { deleteFile } from "../utils/upload.utils.js";
+import { resolve } from "path";
 
 const handleGetAllCourses = async (req, res) => {
   let skip = 0;
@@ -344,10 +345,19 @@ const handleUpdateCourseDetails = async (req, res) => {
 const handleDeleteCourseDetails = async (req, res) => {
   const _id = req.params?.id;
   // not done yet
-  const course = await CourseModal.findByIdAndDelete(_id);
+  let course = null;
+  if (req.user?.role === "admin") {
+    course = await CourseModal.findByIdAndDelete(_id);
+  } else {
+    course = await CourseModal.findOneAndDelete({
+      _id: new mongoose.Types.ObjectId(_id),
+      instructor: new mongoose.Types.ObjectId(req.user?._id),
+    });
+  }
   if (!course) {
     throw new ApiError(400, "Invalid Id");
   }
+  deleteFile(resolve(`./uploads/thumbnails/${course.thumbnail}`));
   return res
     .status(200)
     .json(new ApiResponse(200, {}, "Course Deleted Successfully"));
