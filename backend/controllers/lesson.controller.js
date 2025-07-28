@@ -76,7 +76,38 @@ const handleDeleteLesson = async (req, res) => {
 };
 
 const handleGetAllLessons = async (req, res) => {
-  res.json({ message: "Feature not added Yet!" });
+  const id = req.params?.courseId;
+
+  if (!id) {
+    throw new ApiError(400, "Course Id is required");
+  }
+
+  // check if course exist
+  const course = await CourseModel.findById(id);
+
+  if (!course) {
+    throw new ApiError(409, "Invalid Course Id");
+  }
+
+  const lessons = await LessonModel.find({
+    course: new mongoose.Types.ObjectId(id),
+  }).sort({ createdAt: 1 });
+
+  if (!lessons || lessons.length === 0) {
+    return res.status(200).json(new ApiResponse(200, { lessons: [] }, "No Lessons Found"));
+  }
+
+  const updatedLessons = lessons.map((lesson) => ({
+    ...lesson._doc,
+    videoUrl: `${process.env.BASE_URL}/lesson/${lesson.videoUrl}`,
+    pdfUrl: lesson.pdfUrl
+      ? `${process.env.BASE_URL}/lesson/${lesson.pdfUrl}`
+      : null,
+  }));
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { lessons: updatedLessons }, "Success"));
 };
 
 export {
