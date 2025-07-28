@@ -21,6 +21,11 @@ app.use(
   "/thumbnail",
   express.static(path.join(__dirname, "uploads", "thumbnails"))
 );
+// Serve static files from the "uploads" directory
+app.use(
+  "/lesson",
+  express.static(path.join(__dirname, "uploads"))
+);
 
 // Setup dotenv
 dotenv.config({

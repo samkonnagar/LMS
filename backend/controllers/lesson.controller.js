@@ -3,6 +3,7 @@ import CourseModel from "../models/Course.model.js";
 import LessonModel from "../models/Lesson.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { deleteFile } from "../utils/upload.utils.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
 
 const handleAddLessonCourse = async (req, res) => {
   const { title, content } = req.body;
@@ -23,13 +24,14 @@ const handleAddLessonCourse = async (req, res) => {
     throw new ApiError(400, "All fields are required");
   }
 
-  const _id = req.params?.id;
+  const _id = req.params?.courseId;
 
   // check if course exist
   const existedCourse = await CourseModel.findOne({
     _id: new mongoose.Types.ObjectId(_id),
     instructor: new mongoose.Types.ObjectId(req.user?._id),
   });
+
 
   if (!existedCourse) {
     deleteFile(videoPath);
@@ -38,7 +40,10 @@ const handleAddLessonCourse = async (req, res) => {
 
   // collect all data
   const video = req.files.video[0]?.filename;
-  const pdf = req.files?.pdf[0]?.filename;
+  let pdf = null;
+  if (req.files?.pdf && req.files.pdf.length > 0) {
+    pdf = req.files?.pdf[0]?.filename;
+  }
 
   // create lesson
   const lesson = await LessonModel.create({
@@ -53,6 +58,9 @@ const handleAddLessonCourse = async (req, res) => {
     deleteFile(videoPath);
     throw new ApiError(500, "Something went wrong while creating category");
   }
+
+  lesson.videoUrl = `${process.env.BASE_URL}/lesson/${lesson.videoUrl}`;
+  lesson.pdfUrl = `${process.env.BASE_URL}/lesson/${lesson.pdfUrl}`;
 
   return res
     .status(201)

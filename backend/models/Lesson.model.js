@@ -6,7 +6,7 @@ const lessonSchema = new Schema(
     title: { type: String, required: true, trim: true },
     content: { type: String, required: true, trim: true },
     videoUrl: { type: String, required: true, trim: true },
-    pdfUrl: { type: String, required: true, trim: true },
+    pdfUrl: { type: String, trim: true },
   },
   { timestamps: true }
 );

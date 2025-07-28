@@ -226,6 +226,8 @@ const handleCreateNewCourse = async (req, res) => {
     throw new ApiError(500, "Something went wrong while creating category");
   }
 
+  course.thumbnail = `${process.env.BASE_URL}/thumbnail/${course.thumbnail}`;
+
   return res
     .status(201)
     .json(new ApiResponse(201, { course }, "Course Created Successfully"));
@@ -283,12 +285,18 @@ const handleGetCourseDetails = async (req, res) => {
   if (!course) {
     throw new ApiError(409, "Invalid Course Id");
   }
+
+  const u_course = course.map((course) => ({
+    ...course,
+    thumbnail: `${process.env.BASE_URL}/thumbnail/${course.thumbnail}`,
+  }));
+  
   // this controller not complted yet!
   return res.status(200).json(
     new ApiResponse(
       200,
       {
-        course,
+        course: u_course[0] || {},
       },
       "Success"
     )
