@@ -4,7 +4,10 @@ import CourseModal from "../models/Course.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { deleteFile } from "../utils/upload.utils.js";
-import { resolve } from "path";
+import LessonModel from "../models/Lesson.model.js";
+import EnrollmentModel from "../models/Enrollment.model.js";
+import ReviewModel from "../models/Review.model.js";
+import NotificationModel from "../models/Notification.model.js";
 
 const handleGetAllCourses = async (req, res) => {
   let skip = 0;
@@ -290,7 +293,7 @@ const handleGetCourseDetails = async (req, res) => {
     ...course,
     thumbnail: `${process.env.BASE_URL}/thumbnail/${course.thumbnail}`,
   }));
-  
+
   // this controller not complted yet!
   return res.status(200).json(
     new ApiResponse(
@@ -365,7 +368,28 @@ const handleDeleteCourseDetails = async (req, res) => {
   if (!course) {
     throw new ApiError(400, "Invalid Id");
   }
-  deleteFile(resolve(`./uploads/thumbnails/${course.thumbnail}`));
+  deleteFile(`./uploads/thumbnails/${course.thumbnail}`);
+
+  // delete all lessons of this course along with files
+  const lessons = await LessonModel.find({
+    course: new mongoose.Types.ObjectId(_id),
+  });
+  for (const lesson of lessons) {
+    if (lesson.videoUrl) deleteFile("uploads/" + lesson.videoUrl);
+    if (lesson.pdfUrl) deleteFile("uploads/" + lesson.pdfUrl);
+  }
+  await LessonModel.deleteMany({ course: new mongoose.Types.ObjectId(_id) });
+  // delete all enrollments of this course
+  await EnrollmentModel.deleteMany({
+    course: new mongoose.Types.ObjectId(_id),
+  });
+  // delete all reviews of this course
+  await ReviewModel.deleteMany({ course: new mongoose.Types.ObjectId(_id) });
+  // delete all notifications of this course
+  await NotificationModel.deleteMany({
+    course: new mongoose.Types.ObjectId(_id),
+  });
+
   return res
     .status(200)
     .json(new ApiResponse(200, {}, "Course Deleted Successfully"));

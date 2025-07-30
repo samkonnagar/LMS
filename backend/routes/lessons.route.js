@@ -23,6 +23,16 @@ router
     handleAddLessonCourse
   )
   .get(handleGetAllLessons);
-router.route("/:lessonId").put(handleEditLesson).delete(handleDeleteLesson);
+router
+  .route("/:lessonId")
+  .put(
+    authorizeRole("instructor"),
+    fileUpload("./").fields([
+      { name: "video", maxCount: 1 },
+      { name: "pdf", maxCount: 1 },
+    ]),
+    handleEditLesson
+  )
+  .delete(authorizeRole("instructor"), handleDeleteLesson);
 
 export default router;

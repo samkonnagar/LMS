@@ -32,7 +32,6 @@ const handleAddLessonCourse = async (req, res) => {
     instructor: new mongoose.Types.ObjectId(req.user?._id),
   });
 
-
   if (!existedCourse) {
     deleteFile(videoPath);
     throw new ApiError(400, "Invalid Course Id");
@@ -60,7 +59,9 @@ const handleAddLessonCourse = async (req, res) => {
   }
 
   lesson.videoUrl = `${process.env.BASE_URL}/lesson/${lesson.videoUrl}`;
-  lesson.pdfUrl = `${process.env.BASE_URL}/lesson/${lesson.pdfUrl}`;
+  lesson.pdfUrl
+    ? (lesson.pdfUrl = `${process.env.BASE_URL}/lesson/${lesson.pdfUrl}`)
+    : (lesson.pdfUrl = null);
 
   return res
     .status(201)
@@ -68,11 +69,90 @@ const handleAddLessonCourse = async (req, res) => {
 };
 
 const handleEditLesson = async (req, res) => {
-  res.json({ message: "Feature not added Yet!" });
+  const id = req.params?.lessonId;
+  if (!id) throw new ApiError(400, "Lesson Id is required");
+  // check if lesson exist
+  const lesson = await LessonModel.findById(id);
+  if (!lesson) throw new ApiError(409, "Invalid Lesson Id");
+  // check if user is instructor of course
+  const course = await CourseModel.findOne({
+    _id: lesson.course,
+    instructor: new mongoose.Types.ObjectId(req.user?._id),
+  });
+  if (!course)
+    throw new ApiError(403, "You are not authorized to edit this lesson");
+  // collect all data
+  const { title, content } = req.body;
+  // validation - not empty
+  if (
+    [title, content].some((field) => field?.trim() === "") ||
+    !title ||
+    !content
+  ) {
+    throw new ApiError(400, "All fields are required");
+  }
+  // update lesson
+  lesson.title = title.trim();
+  lesson.content = content.trim();
+  // check for video
+  if (req.files?.video && req.files.video.length > 0) {
+    // delete old video file
+    if (lesson.videoUrl) deleteFile("uploads/" + lesson.videoUrl);
+    // update video
+    lesson.videoUrl = req.files.video[0]?.filename;
+  }
+  // check for pdf
+  if (req.files?.pdf && req.files.pdf.length > 0) {
+    // delete old pdf file
+    if (lesson.pdfUrl) deleteFile("uploads/" + lesson.pdfUrl);
+    // update pdf
+    lesson.pdfUrl = req.files.pdf[0]?.filename;
+  }
+  // save lesson
+  const updatedLesson = await lesson.save();
+  if (!updatedLesson)
+    throw new ApiError(500, "Something went wrong while updating lesson");
+  updatedLesson.videoUrl = `${process.env.BASE_URL}/lesson/${updatedLesson.videoUrl}`;
+  updatedLesson.pdfUr
+    ? (updatedLesson.pdfUrl = `${process.env.BASE_URL}/lesson/${updatedLesson.pdfUrl}`)
+    : (updatedLesson.pdfUrl = null);
+
+  res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { lesson: updatedLesson },
+        "Lesson Updated Successfully"
+      )
+    );
 };
 
 const handleDeleteLesson = async (req, res) => {
-  res.json({ message: "Feature not added Yet!" });
+  const id = req.params?.lessonId;
+  if (!id) throw new ApiError(400, "Lesson Id is required");
+  // check if lesson exist
+  const lesson = await LessonModel.findById(id);
+
+  if (!lesson) throw new ApiError(409, "Invalid Lesson Id");
+
+  // check if user is instructor of course
+  const course = await CourseModel.findOne({
+    _id: lesson.course,
+    instructor: new mongoose.Types.ObjectId(req.user?._id),
+  });
+  if (!course)
+    throw new ApiError(403, "You are not authorized to delete this lesson");
+
+  // delete video file
+  if (lesson.videoUrl) deleteFile("uploads/" + lesson.videoUrl);
+  // delete pdf file
+  if (lesson.pdfUrl) deleteFile("uploads/" + lesson.pdfUrl);
+  // delete lesson
+  const deletedLesson = await LessonModel.findByIdAndDelete(id);
+  if (!deletedLesson) throw new ApiError(500, "Something went wrong");
+
+  res.status(200).json(new ApiResponse(200, {}, "Lesson Deleted Successfully"));
 };
 
 const handleGetAllLessons = async (req, res) => {
@@ -94,7 +174,9 @@ const handleGetAllLessons = async (req, res) => {
   }).sort({ createdAt: 1 });
 
   if (!lessons || lessons.length === 0) {
-    return res.status(200).json(new ApiResponse(200, { lessons: [] }, "No Lessons Found"));
+    return res
+      .status(200)
+      .json(new ApiResponse(200, { lessons: [] }, "No Lessons Found"));
   }
 
   const updatedLessons = lessons.map((lesson) => ({
