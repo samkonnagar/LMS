@@ -35,7 +35,55 @@ const handleEnrollCourse = async (req, res) => {
 };
 
 const handleGetAllCourses = async (req, res) => {
-  res.json({ message: "Feature not added Yet!" });
+  const userId = req.user?._id;
+  if (!userId) throw new ApiError(400, "User ID is required");
+  const enrollments = await EnrollmentModel.aggregate([
+    {
+      $match: { student: new mongoose.Types.ObjectId(userId) },
+    },
+    {
+      $lookup: {
+        from: "courses",
+        localField: "course",
+        foreignField: "_id",
+        as: "courseDetails",
+      },
+    },
+    {
+      $unwind: "$courseDetails",
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "courseDetails.instructor",
+        foreignField: "_id",
+        as: "instructorDetails",
+      },
+    },
+    {
+      $unwind: "$instructorDetails",
+    },
+    {
+      $project: {
+        _id: 1,
+        course: "$courseDetails._id",
+        title: "$courseDetails.title",
+        description: "$courseDetails.description",
+        createdAt: "$courseDetails.createdAt",
+        updatedAt: "$courseDetails.updatedAt",
+        instructor: {
+          _id: "$instructorDetails._id",
+          name: "$instructorDetails.name",
+          email: "$instructorDetails.email",
+        },
+      },
+    },
+  ]);
+  if (!enrollments || enrollments.length === 0)
+    throw new ApiError(404, "No courses found");
+  res
+    .status(200)
+    .json(new ApiResponse(200, enrollments, "Courses retrieved successfully"));
 };
 
 const handleGetSelectedCourseProgress = async (req, res) => {
