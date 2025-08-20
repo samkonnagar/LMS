@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import CourseModel from "../models/Course.model.js";
 import EnrollmentModel from "../models/Enrollment.model.js";
+import LessonModel from "../models/Lesson.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
@@ -91,7 +92,40 @@ const handleGetSelectedCourseProgress = async (req, res) => {
 };
 
 const markLessonCompleted = async (req, res) => {
-  res.json({ message: "Feature not added Yet!" });
+  const lessonId = req.params?.lessonId;
+  const lesson = await LessonModel.findById(lessonId);
+  if (!lesson) {
+    throw new ApiError(404, "Lesson not found");
+  }
+  const userId = req.user?._id;
+  const enrollCourses = await EnrollmentModel.find(
+    {
+      student: userId,
+    },
+    { course: 1, _id: 0 }
+  );
+
+  const courseIds = enrollCourses.map((enroll) => String(enroll.course));
+
+  if (!courseIds.includes(String(lesson.course))) {
+    throw new ApiError(401, "You can not enroll this course");
+  }
+
+  const completed = await EnrollmentModel.updateOne(
+    {
+      student: userId,
+      course: lesson.course,
+    },
+    { $addToSet: { completedLessons: lessonId } }
+  );
+
+  if (!completed) {
+    throw new ApiError(500, "Task failed");
+  }
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Lession Completed"));
 };
 
 const handleGetPdfCertificate = async (req, res) => {
